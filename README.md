@@ -151,7 +151,36 @@ En *Settings > Branches*, una regla para `main` con:
 Crear un *Web Service* desde imagen existente con `docker.io/<usuario>/devops-up:<versión>`, health check en `/health` y la variable `BACKEND=simulator` (Render no expone un demonio de Docker). El deploy hook solo puede cambiar el tag, así que el repositorio de la imagen tiene que ser el mismo que se configuró en el servicio.
 
 ## Monitoreo
-_Pendiente: dashboard de New Relic y señales doradas._
+
+### Logs estructurados
+Todo lo que escribe la API sale por stdout como una línea JSON. Cada request la registra un middleware con `timestamp`, `level`, `path`, `status_code`, `method` y `duration_ms`; el access log de uvicorn está desactivado para no mezclar formatos.
+
+```json
+{"timestamp": "2026-10-19T19:51:23.577+00:00", "level": "WARNING", "logger": "app.requests", "message": "GET /containers/nope/stats -> 404", "method": "GET", "path": "/containers/nope/stats", "status_code": 404, "duration_ms": 1.05}
+```
+
+Las respuestas 2xx y 3xx se loguean como `INFO`, las 4xx como `WARNING` y las 5xx como `ERROR`.
+
+### New Relic
+Con `NEW_RELIC_LICENSE_KEY` definida, `python -m app` inicia el agente oficial antes de importar FastAPI y uvicorn, así instrumenta cada request como una transacción web y reenvía los logs. Sin la key la API funciona igual, sin reportar.
+
+### Dashboard de golden signals
+El dashboard se arma desde cero en *Dashboards > Create a dashboard*, con un widget por señal:
+
+| Señal | NRQL |
+|---|---|
+| Tráfico (RPM) | `SELECT rate(count(*), 1 minute) FROM Transaction WHERE appName = 'devops-up' TIMESERIES` |
+| Latencia p50 / p95 (ms) | `SELECT percentile(duration * 1000, 50, 95) FROM Transaction WHERE appName = 'devops-up' TIMESERIES` |
+| Errores 4xx / 5xx | `SELECT filter(count(*), WHERE http.statusCode >= 400 AND http.statusCode < 500) AS '4xx', filter(count(*), WHERE http.statusCode >= 500) AS '5xx' FROM Transaction WHERE appName = 'devops-up' TIMESERIES` |
+| Logs de error | `SELECT count(*) FROM Log WHERE level = 'ERROR' TIMESERIES` |
+
+Para generar tráfico (incluye un 10% de requests a un contenedor inexistente, que dan 404):
+
+```bash
+python scripts/generar_trafico.py --url http://127.0.0.1:8000 --segundos 300 --rps 5
+```
+
+_Captura pendiente: dashboard con tráfico generado._
 
 ## Decisiones de diseño
 _Pendiente: imagen base, multi-stage, usuario non-root, estrategia de branching._
