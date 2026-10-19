@@ -1,13 +1,25 @@
-# Workflow reutilizable: construye la imagen Docker y la prueba antes de aceptarla.
+# Workflow reutilizable: construye la imagen Docker, la prueba y opcionalmente
+# la publica en Docker Hub.
 name: Docker
 
 on:
   workflow_call:
     inputs:
       version:
-        description: Versión que se graba en la imagen (APP_VERSION)
+        description: Versión que se graba en la imagen (APP_VERSION) y se usa como tag
         type: string
         default: dev
+      push:
+        description: Publicar la imagen en Docker Hub
+        type: boolean
+        default: false
+    secrets:
+      DOCKERHUB_TOKEN:
+        required: false
+    outputs:
+      image:
+        description: Imagen publicada (docker.io/usuario/devops-up:versión)
+        value: ${{ jobs.build.outputs.image }}
 
 permissions:
   contents: read
@@ -16,9 +28,14 @@ jobs:
   build:
     name: build
     runs-on: ubuntu-24.04
+    outputs:
+      image: ${{ steps.push.outputs.image }}
     env:
       VERSION: ${{ inputs.version }}
       LOCAL_IMAGE: devops-up:ci
+      # El usuario va como variable (no secreto) para que el nombre de la imagen
+      # pueda pasarse como output al job de deploy.
+      REPOSITORY: ${{ vars.DOCKERHUB_USERNAME }}/devops-up
     steps:
       - uses: actions/checkout@v7
 
@@ -37,3 +54,20 @@ jobs:
           done
           docker logs smoke
           exit 1
+
+      - name: Iniciar sesión en Docker Hub
+        if: inputs.push
+        env:
+          DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+
+      - name: Publicar en Docker Hub
+        id: push
+        if: inputs.push
+        run: |
+          for tag in "$VERSION" "sha-${GITHUB_SHA::7}"; do
+            docker tag "$LOCAL_IMAGE" "$REPOSITORY:$tag"
+            docker push "$REPOSITORY:$tag"
+          done
+          echo "image=docker.io/$REPOSITORY:$VERSION" >> "$GITHUB_OUTPUT"
