@@ -37,7 +37,12 @@ def test_lista_contenedores_con_datos_basicos(service, docker_client):
     docker_client.containers.list.return_value = [make_container()]
 
     assert service.list_containers() == [
-        {"id": "abc123def456", "name": "web", "image": "nginx:1.30.6-alpine", "status": "running"}
+        {
+            "id": "abc123def456",
+            "name": "web",
+            "image": "nginx:1.30.6-alpine",
+            "status": "running",
+        }
     ]
     docker_client.containers.list.assert_called_once_with(ignore_removed=True)
 
@@ -45,7 +50,11 @@ def test_lista_contenedores_con_datos_basicos(service, docker_client):
 def test_estadisticas_calculan_cpu_y_memoria(service, docker_client):
     container = make_container()
     container.stats.return_value = {
-        "cpu_stats": {"cpu_usage": {"total_usage": 300}, "system_cpu_usage": 2000, "online_cpus": 1},
+        "cpu_stats": {
+            "cpu_usage": {"total_usage": 300},
+            "system_cpu_usage": 2000,
+            "online_cpus": 1,
+        },
         "precpu_stats": {"cpu_usage": {"total_usage": 100}, "system_cpu_usage": 1000},
         "memory_stats": {"usage": 64 * MIB, "limit": 512 * MIB, "stats": {}},
     }

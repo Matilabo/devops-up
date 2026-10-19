@@ -23,14 +23,14 @@ class ContainerStats(BaseModel):
     cpu_percent: float = Field(description="Uso de CPU en %, como `docker stats`", examples=[1.25])
     memory_usage_mib: float = Field(description="Memoria usada sin caché, en MiB", examples=[12.4])
     memory_limit_mib: float = Field(description="Límite de memoria, en MiB", examples=[7837.5])
-    memory_percent: float = Field(description="Memoria usada sobre el límite, en %", examples=[0.16])
+    memory_percent: float = Field(description="Memoria usada sobre el límite (%)", examples=[0.16])
 
 
 class ActionResult(BaseModel):
     id: str = Field(examples=["3f4e8a1b2c9d"])
     name: str = Field(examples=["devops-up-demo-1"])
     action: str = Field(examples=["restart"])
-    status: str = Field(description="Estado del contenedor después de la acción", examples=["running"])
+    status: str = Field(description="Estado después de la acción", examples=["running"])
 
 
 class ErrorResponse(BaseModel):

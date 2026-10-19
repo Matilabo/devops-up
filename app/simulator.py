@@ -64,7 +64,12 @@ class SimulatorService:
     def _set_status(self, ref: str, action: str, status: str) -> dict:
         container = self._find(ref)
         container["status"] = status
-        return {"id": container["id"], "name": container["name"], "action": action, "status": status}
+        return {
+            "id": container["id"],
+            "name": container["name"],
+            "action": action,
+            "status": status,
+        }
 
     def _find(self, ref: str) -> dict:
         # Igual que Docker: acepta el nombre, el ID completo o un prefijo del ID.
