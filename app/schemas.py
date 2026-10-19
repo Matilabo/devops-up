@@ -25,5 +25,12 @@ class ContainerStats(BaseModel):
     memory_percent: float = Field(description="Memoria usada sobre el límite, en %", examples=[0.16])
 
 
+class ActionResult(BaseModel):
+    id: str = Field(examples=["3f4e8a1b2c9d"])
+    name: str = Field(examples=["devops-up-demo-1"])
+    action: str = Field(examples=["restart"])
+    status: str = Field(description="Estado del contenedor después de la acción", examples=["running"])
+
+
 class ErrorResponse(BaseModel):
     detail: str = Field(examples=["No existe el contenedor 'abc123'"])

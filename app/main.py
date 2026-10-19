@@ -3,11 +3,11 @@
 from functools import lru_cache
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, Path
+from fastapi import Depends, FastAPI, Path, Query
 
 from app.config import get_settings
 from app.docker_service import DockerService
-from app.schemas import ContainerStats, ContainerSummary, ErrorResponse, Health
+from app.schemas import ActionResult, ContainerStats, ContainerSummary, ErrorResponse, Health
 
 settings = get_settings()
 
@@ -28,6 +28,9 @@ def get_service() -> DockerService:
 
 Service = Annotated[DockerService, Depends(get_service)]
 ContainerRef = Annotated[str, Path(description="ID (completo o corto) o nombre del contenedor")]
+Timeout = Annotated[
+    int, Query(ge=0, le=60, description="Segundos de espera antes de forzar el apagado")
+]
 
 DOCKER_UNAVAILABLE = {503: {"model": ErrorResponse, "description": "Docker no disponible"}}
 CONTAINER_ERRORS = {
@@ -68,3 +71,14 @@ def list_containers(service: Service):
 )
 def container_stats(container_id: ContainerRef, service: Service):
     return service.get_stats(container_id)
+
+
+@app.post(
+    "/containers/{container_id}/restart",
+    response_model=ActionResult,
+    responses=CONTAINER_ERRORS,
+    tags=["contenedores"],
+    summary="Reiniciar un contenedor",
+)
+def restart_container(container_id: ContainerRef, service: Service, timeout: Timeout = 10):
+    return service.restart(container_id, timeout)
