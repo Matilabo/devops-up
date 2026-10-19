@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Herramientas
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Entorno local (credenciales)
+.env
+
+# Editores
+.vscode/
+.idea/
