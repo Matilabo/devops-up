@@ -40,3 +40,23 @@ jobs:
       push: true
     secrets:
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+
+  github-release:
+    name: Crear release en GitHub
+    needs: publish
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: Crear release con notas generadas desde los commits
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          IMAGE: ${{ needs.publish.outputs.image }}
+        run: |
+          gh release create "$TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "$TAG" \
+            --notes "Imagen: \`docker pull $IMAGE\`" \
+            --generate-notes \
+            --verify-tag
