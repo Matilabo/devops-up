@@ -3,6 +3,7 @@
 import uvicorn
 
 from app.config import get_settings
+from app.logging_config import build_log_config
 
 
 def main() -> None:
@@ -11,7 +12,9 @@ def main() -> None:
         "app.main:app",
         host=settings.host,
         port=settings.port,
-        log_level=settings.log_level.lower(),
+        log_config=build_log_config(settings.log_level),
+        # El access log de uvicorn no es JSON: cada request lo loguea el middleware de la app.
+        access_log=False,
     )
 
 
