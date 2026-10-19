@@ -76,6 +76,13 @@ class DockerService:
             container.reload()
         return action_result(container, "restart")
 
+    def stop(self, ref: str, timeout: int = 10) -> dict:
+        with docker_errors(ref):
+            container = self.client.containers.get(ref)
+            container.stop(timeout=timeout)
+            container.reload()
+        return action_result(container, "stop")
+
 
 def summary(container) -> dict:
     return {

@@ -82,3 +82,14 @@ def container_stats(container_id: ContainerRef, service: Service):
 )
 def restart_container(container_id: ContainerRef, service: Service, timeout: Timeout = 10):
     return service.restart(container_id, timeout)
+
+
+@app.post(
+    "/containers/{container_id}/stop",
+    response_model=ActionResult,
+    responses=CONTAINER_ERRORS,
+    tags=["contenedores"],
+    summary="Detener un contenedor",
+)
+def stop_container(container_id: ContainerRef, service: Service, timeout: Timeout = 10):
+    return service.stop(container_id, timeout)

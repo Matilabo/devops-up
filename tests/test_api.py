@@ -46,6 +46,18 @@ def test_reiniciar_contenedor(client, service):
     service.restart.assert_called_once_with("web", 5)
 
 
+def test_detener_contenedor(client, service):
+    service.stop.return_value = {
+        "id": "abc123", "name": "web", "action": "stop", "status": "exited"
+    }
+
+    response = client.post("/containers/web/stop")
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "exited"
+    service.stop.assert_called_once_with("web", 10)
+
+
 def test_timeout_fuera_de_rango_es_rechazado(client):
     response = client.post("/containers/web/restart?timeout=999")
 
