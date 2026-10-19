@@ -1,0 +1,42 @@
+# Release: al pushear un tag SemVer (vX.Y.Z) se vuelve a validar el código y se
+# publica la imagen en Docker Hub con ese mismo número de versión.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  version:
+    name: Validar tag SemVer
+    runs-on: ubuntu-24.04
+    outputs:
+      semver: ${{ steps.semver.outputs.semver }}
+    steps:
+      - id: semver
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::El tag '$TAG' no sigue SemVer (vMAJOR.MINOR.PATCH)"
+            exit 1
+          fi
+          echo "semver=${TAG#v}" >> "$GITHUB_OUTPUT"
+
+  lint:
+    uses: ./.github/workflows/lint.yml
+
+  test:
+    uses: ./.github/workflows/tests.yml
+
+  publish:
+    needs: [version, lint, test]
+    uses: ./.github/workflows/docker.yml
+    with:
+      version: ${{ needs.version.outputs.semver }}
+      push: true
+    secrets:
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
