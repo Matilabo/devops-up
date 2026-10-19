@@ -47,10 +47,35 @@ BACKEND=simulator .venv/bin/python -m app
 ## Endpoints
 | Método | Ruta | Descripción |
 |---|---|---|
+| GET | /health | Estado de la API, versión y si el backend responde |
 | GET | /containers | Lista contenedores activos |
 | GET | /containers/{id}/stats | CPU y memoria del contenedor |
 | POST | /containers/{id}/restart | Reinicia el contenedor |
 | POST | /containers/{id}/stop | Detiene el contenedor |
+
+`{id}` acepta el ID completo, un prefijo del ID o el nombre del contenedor, igual que el CLI de Docker. `restart` y `stop` reciben `?timeout=N` (0 a 60 segundos, por defecto 10) antes de forzar el apagado.
+
+```bash
+curl http://localhost:8000/containers
+# [{"id":"3f4e8a1b2c9d","name":"devops-up-demo-1","image":"nginx:1.30.6-alpine","status":"running"}]
+
+curl http://localhost:8000/containers/devops-up-demo-1/stats
+# {"id":"3f4e8a1b2c9d","name":"devops-up-demo-1","cpu_percent":0.02,
+#  "memory_usage_mib":9.81,"memory_limit_mib":7837.5,"memory_percent":0.13}
+
+curl -X POST "http://localhost:8000/containers/devops-up-demo-1/restart?timeout=5"
+# {"id":"3f4e8a1b2c9d","name":"devops-up-demo-1","action":"restart","status":"running"}
+```
+
+El cálculo de CPU y memoria replica el de `docker stats`: la CPU es la variación de uso del contenedor sobre la variación del sistema por la cantidad de CPUs, y a la memoria se le descuenta la caché de archivos (`inactive_file`).
+
+| Código | Cuándo |
+|---|---|
+| 404 | El contenedor no existe |
+| 409 | Se piden estadísticas de un contenedor detenido |
+| 422 | Parámetro inválido (por ejemplo, `timeout` fuera de rango) |
+| 502 | Docker rechazó la operación |
+| 503 | No hay conexión con el demonio de Docker |
 
 ## Tests y linter
 ```bash
