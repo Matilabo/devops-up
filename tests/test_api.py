@@ -109,6 +109,19 @@ def test_errores_del_servicio_se_traducen_a_http(client, service, error, status_
     assert response.json() == {"detail": str(error)}
 
 
+def test_cada_request_queda_logueada(client, service, caplog):
+    service.get_stats.side_effect = ContainerNotFoundError("web")
+
+    with caplog.at_level("INFO", logger="app.requests"):
+        client.get("/containers/web/stats")
+
+    record = caplog.records[-1]
+    assert record.levelname == "WARNING"
+    assert record.path == "/containers/web/stats"
+    assert record.status_code == 404
+    assert record.duration_ms >= 0
+
+
 def test_health_informa_docker_caido(client, service):
     service.ping.return_value = False
 

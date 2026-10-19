@@ -1,5 +1,7 @@
 """Aplicación FastAPI: rutas HTTP de la API de contenedores."""
 
+import logging
+import time
 from functools import lru_cache
 from typing import Annotated
 
@@ -13,6 +15,7 @@ from app.schemas import ActionResult, ContainerStats, ContainerSummary, ErrorRes
 from app.simulator import SimulatorService
 
 settings = get_settings()
+logger = logging.getLogger("app.requests")
 
 app = FastAPI(
     title="devops-up",
@@ -48,6 +51,37 @@ CONTAINER_ERRORS = {
 @app.exception_handler(ContainerServiceError)
 async def container_service_error(request: Request, exc: ContainerServiceError):
     return JSONResponse(status_code=exc.status_code, content={"detail": str(exc)})
+
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    """Loguea cada request con su status y duración (base de las golden signals)."""
+    start = time.perf_counter()
+    status_code = 500
+    try:
+        response = await call_next(request)
+        status_code = response.status_code
+        return response
+    finally:
+        if status_code >= 500:
+            level = logging.ERROR
+        elif status_code >= 400:
+            level = logging.WARNING
+        else:
+            level = logging.INFO
+        logger.log(
+            level,
+            "%s %s -> %s",
+            request.method,
+            request.url.path,
+            status_code,
+            extra={
+                "method": request.method,
+                "path": request.url.path,
+                "status_code": status_code,
+                "duration_ms": round((time.perf_counter() - start) * 1000, 2),
+            },
+        )
 
 
 @app.get("/", include_in_schema=False)
