@@ -4,7 +4,7 @@ Mezcla requests válidas con algunas a contenedores inexistentes (404) para que
 también haya errores que graficar. Solo usa la librería estándar.
 
 Uso:
-    python scripts/generar_trafico.py --url http://localhost:8000 --segundos 120 --rps 5
+    python scripts/generar_trafico.py --url http://127.0.0.1:8000 --segundos 120 --rps 5
 """
 
 import argparse
@@ -47,7 +47,8 @@ def pick_path(names: list[str]) -> str:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--url", default="http://localhost:8000")
+    # 127.0.0.1 y no localhost: en Windows, localhost prueba IPv6 primero y tarda ~1 s por request.
+    parser.add_argument("--url", default="http://127.0.0.1:8000")
     parser.add_argument("--segundos", type=int, default=60)
     parser.add_argument("--rps", type=float, default=5, help="requests por segundo")
     args = parser.parse_args()
