@@ -25,9 +25,16 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PATH="/opt/venv/bin:$PATH"
 
+# Usuario sin privilegios con UID fijo. El código queda como propiedad de root,
+# así que el proceso puede leerlo pero no modificarlo.
+RUN groupadd --system --gid 10001 app \
+    && useradd --system --uid 10001 --gid app --no-create-home --shell /usr/sbin/nologin app
+
 WORKDIR /app
 COPY --from=builder /opt/venv /opt/venv
 COPY app ./app
+
+USER 10001:10001
 
 EXPOSE 8000
 
