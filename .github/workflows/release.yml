@@ -60,3 +60,21 @@ jobs:
             --notes "Imagen: \`docker pull $IMAGE\`" \
             --generate-notes \
             --verify-tag
+
+  deploy:
+    name: Deploy en Render
+    needs: publish
+    runs-on: ubuntu-24.04
+    environment: render
+    steps:
+      - name: Disparar deploy hook con la imagen exacta de esta versión
+        env:
+          DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+          IMAGE: ${{ needs.publish.outputs.image }}
+        run: |
+          if [ -z "$DEPLOY_HOOK" ]; then
+            echo "::warning::Falta el secreto RENDER_DEPLOY_HOOK_URL; se omite el deploy."
+            exit 0
+          fi
+          # Render despliega la imagen indicada en imgURL (URL-encoded) en vez de la última.
+          curl -fsS -X POST --get --data-urlencode "imgURL=$IMAGE" "$DEPLOY_HOOK"
