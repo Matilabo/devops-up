@@ -22,3 +22,8 @@ jobs:
 
   test:
     uses: ./.github/workflows/tests.yml
+
+  # La imagen solo se construye si el código ya pasó lint y tests.
+  docker:
+    needs: [lint, test]
+    uses: ./.github/workflows/docker.yml
