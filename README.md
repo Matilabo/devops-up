@@ -92,7 +92,63 @@ Los tests no necesitan Docker: el SDK se reemplaza por dobles de prueba (`unitte
 - Versionado según [SemVer](https://semver.org/lang/es/). Cada tag `vX.Y.Z` publica una imagen con ese tag en Docker Hub.
 
 ## Pipeline CI/CD
-_Pendiente: diagrama y descripción de los workflows._
+
+```mermaid
+flowchart LR
+    A[git push a una rama] --> B[Pull Request a main]
+    B --> C{CI}
+    C --> L[lint: flake8]
+    C --> T[test: pytest]
+    L --> D[docker: build + no-root + smoke test]
+    T --> D
+    D -->|todo en verde| M[Merge a main]
+    D -->|algo falla| X[PR bloqueado]
+    M --> G[git tag vX.Y.Z]
+    G --> V{Release}
+    V --> V1[validar tag SemVer]
+    V --> V2[lint + test]
+    V1 --> P[build + push a Docker Hub<br/>X.Y.Z y sha-xxxxxxx]
+    V2 --> P
+    P --> R[GitHub Release con notas]
+    P --> H[Deploy hook de Render<br/>imgURL = imagen X.Y.Z]
+```
+
+Los workflows son modulares: `lint.yml`, `tests.yml` y `docker.yml` son reutilizables (`workflow_call`) y los usan tanto `ci.yml` (en cada PR) como `release.yml` (en cada tag).
+
+| Workflow | Disparador | Qué hace |
+|---|---|---|
+| `ci.yml` | PR y push a `main` | Lint, tests y build de la imagen |
+| `release.yml` | Tag `v*` | Valida SemVer, repite lint y tests, publica en Docker Hub, crea la release y despliega |
+| `lint.yml` | Reutilizable | `flake8` |
+| `tests.yml` | Reutilizable | `pytest` |
+| `docker.yml` | Reutilizable | Build, verificación de usuario no-root, smoke test de `/health` y push opcional |
+
+### Componentes
+| Rol | Herramienta |
+|---|---|
+| Runner de CI | GitHub Actions (`ubuntu-24.04`) |
+| Linter | flake8 |
+| Tests | pytest |
+| Registro de imágenes | Docker Hub |
+| Hosting | Render (servicio desde imagen, modo simulador) |
+| Monitoreo | New Relic (APM + logs) |
+
+### Configuración en GitHub
+En *Settings > Secrets and variables > Actions*:
+
+| Nombre | Tipo | Valor |
+|---|---|---|
+| `DOCKERHUB_USERNAME` | Variable | Usuario de Docker Hub. Es variable y no secreto para que el nombre de la imagen pueda pasarse al job de deploy. |
+| `DOCKERHUB_TOKEN` | Secreto | Access token de Docker Hub con permiso de escritura |
+| `RENDER_DEPLOY_HOOK_URL` | Secreto | Deploy hook del servicio en Render. Si falta, el deploy se omite con un aviso. |
+
+En *Settings > Branches*, una regla para `main` con:
+- *Require a pull request before merging* y 1 aprobación.
+- *Require status checks to pass*: `lint / flake8`, `test / pytest` y `docker / build`.
+- *Do not allow bypassing the above settings*.
+
+### Render
+Crear un *Web Service* desde imagen existente con `docker.io/<usuario>/devops-up:<versión>`, health check en `/health` y la variable `BACKEND=simulator` (Render no expone un demonio de Docker). El deploy hook solo puede cambiar el tag, así que el repositorio de la imagen tiene que ser el mismo que se configuró en el servicio.
 
 ## Monitoreo
 _Pendiente: dashboard de New Relic y señales doradas._
