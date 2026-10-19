@@ -10,6 +10,7 @@ from app.config import get_settings
 from app.docker_service import DockerService
 from app.errors import ContainerServiceError
 from app.schemas import ActionResult, ContainerStats, ContainerSummary, ErrorResponse, Health
+from app.simulator import SimulatorService
 
 settings = get_settings()
 
@@ -24,11 +25,13 @@ app = FastAPI(
 
 
 @lru_cache
-def get_service() -> DockerService:
+def get_service() -> DockerService | SimulatorService:
+    if settings.backend == "simulator":
+        return SimulatorService()
     return DockerService()
 
 
-Service = Annotated[DockerService, Depends(get_service)]
+Service = Annotated[DockerService | SimulatorService, Depends(get_service)]
 ContainerRef = Annotated[str, Path(description="ID (completo o corto) o nombre del contenedor")]
 Timeout = Annotated[
     int, Query(ge=0, le=60, description="Segundos de espera antes de forzar el apagado")
@@ -52,6 +55,7 @@ def health(service: Service):
     return {
         "status": "ok",
         "version": settings.app_version,
+        "backend": settings.backend,
         "backend_available": service.ping(),
     }
 

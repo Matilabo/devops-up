@@ -6,7 +6,8 @@ from pydantic import BaseModel, Field
 class Health(BaseModel):
     status: str = Field(examples=["ok"])
     version: str = Field(examples=["1.0.0"])
-    backend_available: bool = Field(description="Si el demonio de Docker responde")
+    backend: str = Field(description="`docker` (SDK real) o `simulator`", examples=["docker"])
+    backend_available: bool = Field(description="Si el backend responde")
 
 
 class ContainerSummary(BaseModel):
