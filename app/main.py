@@ -3,11 +3,11 @@
 from functools import lru_cache
 from typing import Annotated
 
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, Path
 
 from app.config import get_settings
 from app.docker_service import DockerService
-from app.schemas import ContainerSummary, ErrorResponse, Health
+from app.schemas import ContainerStats, ContainerSummary, ErrorResponse, Health
 
 settings = get_settings()
 
@@ -27,8 +27,13 @@ def get_service() -> DockerService:
 
 
 Service = Annotated[DockerService, Depends(get_service)]
+ContainerRef = Annotated[str, Path(description="ID (completo o corto) o nombre del contenedor")]
 
 DOCKER_UNAVAILABLE = {503: {"model": ErrorResponse, "description": "Docker no disponible"}}
+CONTAINER_ERRORS = {
+    404: {"model": ErrorResponse, "description": "El contenedor no existe"},
+    **DOCKER_UNAVAILABLE,
+}
 
 
 @app.get("/health", response_model=Health, tags=["salud"], summary="Estado de la API")
@@ -49,3 +54,17 @@ def health(service: Service):
 )
 def list_containers(service: Service):
     return service.list_containers()
+
+
+@app.get(
+    "/containers/{container_id}/stats",
+    response_model=ContainerStats,
+    responses={
+        **CONTAINER_ERRORS,
+        409: {"model": ErrorResponse, "description": "El contenedor no está en ejecución"},
+    },
+    tags=["contenedores"],
+    summary="Consumo de CPU y memoria de un contenedor",
+)
+def container_stats(container_id: ContainerRef, service: Service):
+    return service.get_stats(container_id)

@@ -8,10 +8,12 @@ from docker.errors import APIError, DockerException, NotFound
 
 from app.errors import (
     ContainerNotFoundError,
+    ContainerNotRunningError,
     ContainerOperationError,
     ContainerServiceError,
     DockerUnavailableError,
 )
+from app.metrics import cpu_percent, memory_usage
 
 
 @contextmanager
@@ -53,6 +55,19 @@ class DockerService:
         with docker_errors():
             containers = self.client.containers.list(ignore_removed=True)
         return [summary(container) for container in containers]
+
+    def get_stats(self, ref: str) -> dict:
+        with docker_errors(ref):
+            container = self.client.containers.get(ref)
+            if container.status != "running":
+                raise ContainerNotRunningError(ref)
+            stats = container.stats(stream=False)
+        return {
+            "id": container.short_id,
+            "name": container.name,
+            "cpu_percent": cpu_percent(stats),
+            **memory_usage(stats),
+        }
 
 
 def summary(container) -> dict:
