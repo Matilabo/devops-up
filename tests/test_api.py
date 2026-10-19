@@ -8,6 +8,23 @@ from app.errors import (
 )
 
 
+def test_swagger_esta_disponible(client):
+    assert client.get("/docs").status_code == 200
+
+    paths = client.get("/openapi.json").json()["paths"]
+    assert "/containers" in paths
+    assert "/containers/{container_id}/stats" in paths
+    assert "/containers/{container_id}/restart" in paths
+    assert "/containers/{container_id}/stop" in paths
+
+
+def test_raiz_redirige_a_swagger(client):
+    response = client.get("/", follow_redirects=False)
+
+    assert response.status_code == 307
+    assert response.headers["location"] == "/docs"
+
+
 def test_health_responde_ok(client):
     response = client.get("/health")
 

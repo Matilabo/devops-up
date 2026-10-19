@@ -4,7 +4,7 @@ from functools import lru_cache
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, Path, Query, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 
 from app.config import get_settings
 from app.docker_service import DockerService
@@ -48,6 +48,11 @@ CONTAINER_ERRORS = {
 @app.exception_handler(ContainerServiceError)
 async def container_service_error(request: Request, exc: ContainerServiceError):
     return JSONResponse(status_code=exc.status_code, content={"detail": str(exc)})
+
+
+@app.get("/", include_in_schema=False)
+def root():
+    return RedirectResponse(url="/docs")
 
 
 @app.get("/health", response_model=Health, tags=["salud"], summary="Estado de la API")
