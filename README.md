@@ -200,3 +200,33 @@ El enunciado admite "Simulador o Docker SDK". Implementamos los dos detrás de l
 
 ### Estrategia de branching
 Usamos *trunk-based* con ramas cortas: `main` es la única rama permanente y siempre está desplegable. Cada cambio vive en una rama `feat/`, `fix/`, `ci/` o `docs/` que se integra por PR con los checks en verde y una revisión. Las versiones se marcan con tags SemVer sobre `main`.
+
+## Aplicación de la filosofía DevOps
+
+### Primera forma: flujo y consistencia
+**Tareas que quedaron 100% automatizadas:** lint, tests, build de la imagen, verificación de usuario no-root, smoke test de `/health`, validación del tag SemVer, etiquetado y push a Docker Hub, notas de la release y deploy en Render. Lo único manual es crear el tag.
+
+**Mismo entorno en desarrollo y en CI/CD:** el mismo `Dockerfile` construye la imagen de `docker compose`, la que prueba el CI y la que se publica. La imagen base está fijada hasta el patch y las dependencias tienen versión exacta en `requirements.txt`. La imagen que se despliega en Render es exactamente la que se probó: el deploy hook recibe su tag.
+
+### Segunda forma: feedback rápido y Andon Cord
+**Dónde se corta el pipeline:**
+1. `flake8` encuentra un error → el check `lint` falla y el PR no se puede integrar.
+2. Falla un test → el check `test` falla y el PR no se puede integrar.
+3. La imagen no construye, corre como root o no responde `/health` → falla `docker`, que además solo corre si lint y tests pasaron.
+4. En la release, un tag que no es `vX.Y.Z` corta todo antes de publicar, y si lint o tests fallan no se publica la imagen ni se despliega.
+
+**Visibilidad de fallos en producción:** si la API empieza a responder 5xx o se pone lenta, New Relic lo muestra en los widgets de errores y de latencia p95, y los logs JSON con `level: ERROR` quedan buscables. Como siguiente paso, se puede crear una alerta NRQL sobre el conteo de 5xx o sobre el p95.
+
+### Tercera forma: experimento de falla controlada
+**Escenario 1, test roto en un PR:** abrir un PR que cambie la fórmula de `cpu_percent` en `app/metrics.py`. Se espera que `test / pytest` falle y que el merge quede bloqueado.
+
+**Escenario 2, Docker caído en ejecución:** con la API corriendo y `generar_trafico.py` enviando requests, detener Docker Desktop. Se espera que la API responda 503, que los logs salgan como `ERROR` y que suba el widget de 5xx en New Relic.
+
+_Pendiente: resultado de cada escenario con capturas._
+
+## Principios Lean: desperdicios que evitamos
+| Desperdicio | Cómo lo evita la solución |
+|---|---|
+| **Esperas y pasos manuales** para compilar, etiquetar y publicar | El workflow de release hace todo a partir de un tag |
+| **Defectos detectados tarde** | Lint, tests y smoke test de la imagen corren en cada PR, antes del merge |
+| **Configuración manual de entornos** ("en mi máquina anda") | `docker compose up --build` levanta todo igual en cualquier máquina, con versiones fijas |
