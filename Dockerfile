@@ -36,6 +36,11 @@ COPY app ./app
 
 USER 10001:10001
 
+# Versión SemVer que el pipeline pasa al construir; /health la expone.
+# Va al final para no invalidar el caché de las capas anteriores.
+ARG APP_VERSION=dev
+ENV APP_VERSION=${APP_VERSION}
+
 EXPOSE 8000
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
