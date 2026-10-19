@@ -3,10 +3,12 @@
 from functools import lru_cache
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, Path, Query
+from fastapi import Depends, FastAPI, Path, Query, Request
+from fastapi.responses import JSONResponse
 
 from app.config import get_settings
 from app.docker_service import DockerService
+from app.errors import ContainerServiceError
 from app.schemas import ActionResult, ContainerStats, ContainerSummary, ErrorResponse, Health
 
 settings = get_settings()
@@ -35,8 +37,14 @@ Timeout = Annotated[
 DOCKER_UNAVAILABLE = {503: {"model": ErrorResponse, "description": "Docker no disponible"}}
 CONTAINER_ERRORS = {
     404: {"model": ErrorResponse, "description": "El contenedor no existe"},
+    502: {"model": ErrorResponse, "description": "Docker rechazó la operación"},
     **DOCKER_UNAVAILABLE,
 }
+
+
+@app.exception_handler(ContainerServiceError)
+async def container_service_error(request: Request, exc: ContainerServiceError):
+    return JSONResponse(status_code=exc.status_code, content={"detail": str(exc)})
 
 
 @app.get("/health", response_model=Health, tags=["salud"], summary="Estado de la API")

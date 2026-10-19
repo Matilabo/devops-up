@@ -1,3 +1,13 @@
+import pytest
+
+from app.errors import (
+    ContainerNotFoundError,
+    ContainerNotRunningError,
+    ContainerOperationError,
+    DockerUnavailableError,
+)
+
+
 def test_health_responde_ok(client):
     response = client.get("/health")
 
@@ -62,3 +72,30 @@ def test_timeout_fuera_de_rango_es_rechazado(client):
     response = client.post("/containers/web/restart?timeout=999")
 
     assert response.status_code == 422
+
+
+@pytest.mark.parametrize(
+    ("error", "status_code"),
+    [
+        (ContainerNotFoundError("web"), 404),
+        (ContainerNotRunningError("web"), 409),
+        (ContainerOperationError("conflicto"), 502),
+        (DockerUnavailableError(), 503),
+    ],
+)
+def test_errores_del_servicio_se_traducen_a_http(client, service, error, status_code):
+    service.get_stats.side_effect = error
+
+    response = client.get("/containers/web/stats")
+
+    assert response.status_code == status_code
+    assert response.json() == {"detail": str(error)}
+
+
+def test_health_informa_docker_caido(client, service):
+    service.ping.return_value = False
+
+    response = client.get("/health")
+
+    assert response.status_code == 200
+    assert response.json()["backend_available"] is False
