@@ -1,0 +1,4 @@
+# Fin de línea LF en todo el repo (evita problemas al construir la imagen desde Windows)
+* text=auto eol=lf
+*.png binary
+*.jpg binary
