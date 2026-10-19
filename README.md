@@ -183,4 +183,20 @@ python scripts/generar_trafico.py --url http://127.0.0.1:8000 --segundos 300 --r
 _Captura pendiente: dashboard con tráfico generado._
 
 ## Decisiones de diseño
-_Pendiente: imagen base, multi-stage, usuario non-root, estrategia de branching._
+
+### Dockerfile
+- **Imagen base `python:3.12.15-slim-trixie`**: versión fija hasta el patch, nunca `latest`, para que el build sea reproducible. `slim` pesa una fracción de la imagen completa y, a diferencia de `alpine`, usa glibc, así que las dependencias se instalan como wheels precompiladas sin compilar nada.
+- **Multi-stage**: la etapa `builder` crea un virtualenv en `/opt/venv` e instala las dependencias; la etapa `runtime` copia solo ese virtualenv y el código. pip y su caché no llegan a la imagen final.
+- **Orden de capas para el caché**: primero se copia `requirements.txt` y se instalan las dependencias, después el código. Un cambio en `app/` reutiliza la capa de dependencias. La `ARG APP_VERSION` va al final por el mismo motivo.
+- **Usuario no-root**: la app corre como UID 10001. El código es propiedad de root, así que el proceso puede leerlo pero no modificarlo. El CI verifica que `id -u` no sea 0.
+- **`HEALTHCHECK`**: `python -m app.healthcheck` consulta `/health` con `urllib`, sin instalar `curl` en la imagen.
+- **`.dockerignore`**: tests, documentación, `.git` y `.env` no entran al contexto de build.
+
+### Acceso al socket de Docker
+Para que la API pueda gestionar contenedores, el compose monta `/var/run/docker.sock`. Como el proceso no es root, `group_add` le agrega el grupo dueño del socket (`DOCKER_GID`). Montar el socket equivale a dar control total del demonio, por eso la API está pensada para entornos locales o de prueba, no para exponerla en internet con el backend `docker`.
+
+### Backend simulador
+El enunciado admite "Simulador o Docker SDK". Implementamos los dos detrás de la misma interfaz (`DockerService` y `SimulatorService`) y se elige con `BACKEND`. El simulador permite desplegar en Render, que no tiene demonio de Docker, y generar tráfico para el dashboard.
+
+### Estrategia de branching
+Usamos *trunk-based* con ramas cortas: `main` es la única rama permanente y siempre está desplegable. Cada cambio vive en una rama `feat/`, `fix/`, `ci/` o `docs/` que se integra por PR con los checks en verde y una revisión. Las versiones se marcan con tags SemVer sobre `main`.
