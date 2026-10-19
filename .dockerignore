@@ -1,0 +1,19 @@
+# Solo entra al contexto de build lo que la imagen necesita.
+.git
+.github
+.venv
+venv
+__pycache__
+*.py[cod]
+.pytest_cache
+.env
+.env.*
+tests
+docs
+scripts
+*.md
+.flake8
+pytest.ini
+requirements-dev.txt
+Dockerfile
+docker-compose.yml
