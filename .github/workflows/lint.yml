@@ -1,0 +1,25 @@
+# Workflow reutilizable: análisis estático con flake8.
+name: Lint
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  flake8:
+    name: flake8
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Instalar flake8
+        run: pip install "$(grep '^flake8==' requirements-dev.txt)"
+
+      - name: Ejecutar flake8
+        run: flake8

@@ -1,0 +1,24 @@
+# Integración continua: corre en cada Pull Request hacia main.
+# Si el lint o los tests fallan, el check queda en rojo y la protección de rama
+# impide el merge (Andon Cord).
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    uses: ./.github/workflows/lint.yml
+
+  test:
+    uses: ./.github/workflows/tests.yml
