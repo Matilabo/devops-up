@@ -1,0 +1,80 @@
+# Release: al pushear un tag SemVer (vX.Y.Z) se vuelve a validar el código y se
+# publica la imagen en Docker Hub con ese mismo número de versión.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  version:
+    name: Validar tag SemVer
+    runs-on: ubuntu-24.04
+    outputs:
+      semver: ${{ steps.semver.outputs.semver }}
+    steps:
+      - id: semver
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::El tag '$TAG' no sigue SemVer (vMAJOR.MINOR.PATCH)"
+            exit 1
+          fi
+          echo "semver=${TAG#v}" >> "$GITHUB_OUTPUT"
+
+  lint:
+    uses: ./.github/workflows/lint.yml
+
+  test:
+    uses: ./.github/workflows/tests.yml
+
+  publish:
+    needs: [version, lint, test]
+    uses: ./.github/workflows/docker.yml
+    with:
+      version: ${{ needs.version.outputs.semver }}
+      push: true
+    secrets:
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+
+  github-release:
+    name: Crear release en GitHub
+    needs: publish
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: Crear release con notas generadas desde los commits
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          IMAGE: ${{ needs.publish.outputs.image }}
+        run: |
+          gh release create "$TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "$TAG" \
+            --notes "Imagen: \`docker pull $IMAGE\`" \
+            --generate-notes \
+            --verify-tag
+
+  deploy:
+    name: Deploy en Render
+    needs: publish
+    runs-on: ubuntu-24.04
+    environment: render
+    steps:
+      - name: Disparar deploy hook con la imagen exacta de esta versión
+        env:
+          DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+          IMAGE: ${{ needs.publish.outputs.image }}
+        run: |
+          if [ -z "$DEPLOY_HOOK" ]; then
+            echo "::warning::Falta el secreto RENDER_DEPLOY_HOOK_URL; se omite el deploy."
+            exit 0
+          fi
+          # Render despliega la imagen indicada en imgURL (URL-encoded) en vez de la última.
+          curl -fsS -X POST --get --data-urlencode "imgURL=$IMAGE" "$DEPLOY_HOOK"
