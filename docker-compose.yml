@@ -13,6 +13,10 @@ services:
     environment:
       BACKEND: ${BACKEND:-docker}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      # Monitoreo: sin license key la API corre igual, pero sin reportar a New Relic.
+      NEW_RELIC_LICENSE_KEY: ${NEW_RELIC_LICENSE_KEY:-}
+      NEW_RELIC_APP_NAME: ${NEW_RELIC_APP_NAME:-devops-up}
+      NEW_RELIC_APPLICATION_LOGGING_FORWARDING_CONTEXT_DATA_ENABLED: "true"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     group_add:
