@@ -4,6 +4,8 @@ API REST que se conecta al demonio de Docker local (SDK oficial) para listar con
 
 Trabajo práctico integrador de DevOps · Universidad de Palermo
 
+📄 **[Informe técnico completo](docs/informe-tecnico.md)**: pipeline, decisiones de diseño, análisis DevOps/Lean y experimentos de falla.
+
 ## Integrantes
 - Risek Abucharara
 - Matias Laboratto
@@ -218,11 +220,13 @@ Usamos *trunk-based* con ramas cortas: `main` es la única rama permanente y sie
 **Visibilidad de fallos en producción:** si la API empieza a responder 5xx o se pone lenta, New Relic lo muestra en los widgets de errores y de latencia p95, y los logs JSON con `level: ERROR` quedan buscables. Como siguiente paso, se puede crear una alerta NRQL sobre el conteo de 5xx o sobre el p95.
 
 ### Tercera forma: experimento de falla controlada
-**Escenario 1, test roto en un PR:** abrir un PR que cambie la fórmula de `cpu_percent` en `app/metrics.py`. Se espera que `test / pytest` falle y que el merge quede bloqueado.
+**Escenario 1, test roto en un PR:** el [PR #7](https://github.com/Matilabo/devops-up/pull/7) cambió la fórmula de `cpu_percent` en `app/metrics.py`. Fallaron 3 tests, el build se salteó y el merge quedó bloqueado.
 
-**Escenario 2, Docker caído en ejecución:** con la API corriendo y `generar_trafico.py` enviando requests, detener Docker Desktop. Se espera que la API responda 503, que los logs salgan como `ERROR` y que suba el widget de 5xx en New Relic.
+**Escenario 2, tag inválido:** el tag `v1.0` cortó el workflow `Release` en la validación SemVer, sin publicar imagen ni desplegar.
 
-_Pendiente: resultado de cada escenario con capturas._
+**Escenario 3, Docker caído en ejecución:** con la API corriendo fuera de Docker y `generar_trafico.py` enviando requests, detener Docker Desktop. Se espera que la API responda 503, que los logs salgan como `ERROR` y que suba el widget de 5xx en New Relic. _Pendiente de ejecutar._
+
+Resultados y capturas en la [sección 6.3 del informe](docs/informe-tecnico.md#63-tercera-forma-aprendizaje-y-simulación-de-fallos).
 
 ## Principios Lean: desperdicios que evitamos
 | Desperdicio | Cómo lo evita la solución |
