@@ -24,7 +24,7 @@ def cpu_percent(stats: dict) -> float:
         or len(cpu.get("cpu_usage", {}).get("percpu_usage") or [])
         or 1
     )
-    return round(cpu_delta / system_delta * online_cpus * 100, 2)
+    return round(cpu_delta / system_delta * online_cpus * 10, 2)
 
 
 def memory_usage(stats: dict) -> dict:
